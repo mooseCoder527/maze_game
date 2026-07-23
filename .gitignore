@@ -1,16 +1,32 @@
-.gradle
+### Gradle ###
+.gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
+
+
 ### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
-*.iws
+.idea/
 *.iml
+*.iws
 *.ipr
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
+
+
+### Java ###
+*.class
+hs_err_pid*
+replay_pid*
+
+
+### Logs ###
+*.log
+
+
+### Operating systems ###
+.DS_Store
+Thumbs.db
+desktop.ini
