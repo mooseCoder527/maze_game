@@ -1,46 +1,67 @@
 package com.maze;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public final class MazeMap {
-    private static String[] LAYOUT = {
-        "#############",
-        "#.....#.....#",
-        "#.###.#.###.#",
-        "#...#.#...#.#",
-        "###.#.###.#.#",
-        "#...#.....#.#",
-        "#.#########.#",
-        "#...........#",
-        "#############"
-    };
+    private final String[] layout;
+    private final int rows;
+    private final int columns;
 
-    public static int ROWS = LAYOUT.length;
-    public static int COLUMNS = LAYOUT[0].length();
+    private final int exitRow;
+    private final int exitColumn;
 
-    private int exitRow;
-    private int exitColumn;
+    public MazeMap(
+            String[] layout,
+            int exitRow,
+            int exitColumn
+    ) {
+        validateLayout(layout);
 
-    public MazeMap(String[] LAYOUT, int exitRow, int exitColumn) {
-        this.LAYOUT = LAYOUT;
-        this.ROWS = LAYOUT.length;
-        this.COLUMNS = LAYOUT[0].length();
+        this.layout = layout.clone();
+        this.rows = layout.length;
+        this.columns = layout[0].length();
+
         if (!isWalkable(exitRow, exitColumn)) {
-            throw new IllegalArgumentException("Exit must be on a walkable cell.");
+            throw new IllegalArgumentException(
+                    "Exit must be on a walkable cell."
+            );
         }
 
         this.exitRow = exitRow;
         this.exitColumn = exitColumn;
     }
 
-    public boolean isWall(int row, int column) {
-        return !isInside(row, column) || LAYOUT[row].charAt(column) == '#';
+    public int rows() {
+        return rows;
     }
 
-    public boolean isWalkable(int row, int column) {
-        return isInside(row, column) && LAYOUT[row].charAt(column) != '#';
+    public int columns() {
+        return columns;
     }
 
-    public boolean isExit(int row, int column) {
-        return row == exitRow && column == exitColumn;
+    public boolean isWall(
+            int row,
+            int column
+    ) {
+        return !isInside(row, column)
+                || layout[row].charAt(column) == '#';
+    }
+
+    public boolean isWalkable(
+            int row,
+            int column
+    ) {
+        return isInside(row, column)
+                && layout[row].charAt(column) != '#';
+    }
+
+    public boolean isExit(
+            int row,
+            int column
+    ) {
+        return row == exitRow
+                && column == exitColumn;
     }
 
     public int exitRow() {
@@ -51,7 +72,85 @@ public final class MazeMap {
         return exitColumn;
     }
 
-    private boolean isInside(int row, int column) {
-        return row >= 0 && row < ROWS && column >= 0 && column < COLUMNS;
+    public List<Cell> neighbors(Cell cell) {
+        int[] rowChanges = {
+                -1,
+                0,
+                1,
+                0
+        };
+
+        int[] columnChanges = {
+                0,
+                1,
+                0,
+                -1
+        };
+
+        List<Cell> neighbors =
+                new ArrayList<>(4);
+
+        for (int i = 0; i < rowChanges.length; i++) {
+            int nextRow =
+                    cell.row() + rowChanges[i];
+
+            int nextColumn =
+                    cell.column() + columnChanges[i];
+
+            if (isWalkable(nextRow, nextColumn)) {
+                neighbors.add(
+                        new Cell(
+                                nextRow,
+                                nextColumn
+                        )
+                );
+            }
+        }
+
+        return neighbors;
+    }
+
+    private boolean isInside(
+            int row,
+            int column
+    ) {
+        return row >= 0
+                && row < rows
+                && column >= 0
+                && column < columns;
+    }
+
+    private static void validateLayout(
+            String[] layout
+    ) {
+        if (layout == null || layout.length == 0) {
+            throw new IllegalArgumentException(
+                    "Layout must not be empty."
+            );
+        }
+
+        if (
+                layout[0] == null
+                        || layout[0].isEmpty()
+        ) {
+            throw new IllegalArgumentException(
+                    "Layout rows must not be empty."
+            );
+        }
+
+        int expectedColumns =
+                layout[0].length();
+
+        for (String row : layout) {
+            if (
+                    row == null
+                            || row.length() != expectedColumns
+            ) {
+                throw new IllegalArgumentException(
+                        "Every layout row must have "
+                                + "the same length."
+                );
+            }
+        }
     }
 }
