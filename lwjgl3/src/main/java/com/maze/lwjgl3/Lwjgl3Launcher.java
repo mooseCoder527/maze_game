@@ -11,8 +11,8 @@ public final class Lwjgl3Launcher {
 
         configuration.setTitle("Maze Escape");
         configuration.setWindowedMode(
-            MazeGame.WORLD_WIDTH,
-            MazeGame.WORLD_HEIGHT
+            MazeGame.INITIAL_WINDOW_WIDTH,
+            MazeGame.INITIAL_WINDOW_HEIGHT
         );
         configuration.useVsync(true);
         configuration.setForegroundFPS(60);
