@@ -123,7 +123,7 @@ public final class MazeGame extends ApplicationAdapter {
     public void loadLevel(int level){
         levelNumber = level;
         switch(levelNumber){
-            case 1 -> createLevel(LAYOUT_1, 5, 11, 1, 1, 7, 1);
+            case 1 -> createLevel(LAYOUT_1, 5, 11, 7, 1, 1, 1);
             case 2 -> createLevel(LAYOUT_2,1,7,7,1,1,2);
             case 3 -> createLevel(LAYOUT_3,1,5,5,3,4,5);
             default -> throw new IllegalStateException("unknown level");
@@ -225,13 +225,6 @@ public final class MazeGame extends ApplicationAdapter {
         renderer.rect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
     }
 
-    public void switch_level(String[] LAYOUT, int exit_row, int exit_column,int player_x,int player_y,int enemy_x, int enemy_y){
-        map = new MazeMap(LAYOUT, exit_row,exit_column);
-        rules = new MazeRules(map);
-        player = new GridEntity(player_y, player_x);
-        enemy = new GridEntity(enemy_y, enemy_x);
-
-    }
 
     private void updateGameState() {
         if (
@@ -272,11 +265,11 @@ public final class MazeGame extends ApplicationAdapter {
                         && levelNumber < LEVEL_COUNT
         ) {
             elapsedTime += delta;
-
+            System.out.println(elapsedTime);
 
             if (
                     elapsedTime
-                            == LEVEL_TRANSITION_DELAY
+                            >= LEVEL_TRANSITION_DELAY
             ) {
                 loadLevel(levelNumber + 1);
             }
