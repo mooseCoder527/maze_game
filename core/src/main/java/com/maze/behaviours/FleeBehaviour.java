@@ -28,33 +28,14 @@ public class FleeBehaviour implements EnemyBehaviour {
                         enemy.column()
                 );
 
+        Cell playerCell =
+                new Cell(
+                        player.row(),
+                        player.column()
+                );
 
-        List<Cell> neighbors =
-                map.neighbors(enemyCell);
-
-
-        if (neighbors.isEmpty()) {
-            return null;
-        }
-
-
-        Cell bestCell = neighbors.get(0);
-        int bestDistance =
-                distance(bestCell, player);
-
-
-        for (Cell cell : neighbors) {
-            int distance =
-                    distance(cell, player);
-
-
-            if (distance > bestDistance) {
-                bestCell = cell;
-                bestDistance = distance;
-            }
-        }
-
-
-        return bestCell;
+        Cell bestCell = pathFinder.furthestCell(map,playerCell);
+        GridEntity bestEntity = new GridEntity(bestCell.row(), bestCell.column());
+        return pathFinder.nextStep(map,enemy,bestEntity);
     }
 }

@@ -9,13 +9,19 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import com.maze.behaviours.ChaseBehaviour;
+import com.maze.behaviours.EnemyBehaviour;
+import com.maze.behaviours.FleeBehaviour;
+import com.maze.states.EnemyState;
 
+import static com.maze.EnemyController.*;
 import static java.lang.Thread.sleep;
 
 public final class MazeGame extends ApplicationAdapter {
     public static final int TILE_SIZE = 48;
 
     public static final float ENEMY_MOVE_INTERVAL = 0.5f;
+    public static final float FLEE_DURATION = 15f;
     public static final float LEVEL_TRANSITION_DELAY = 1.0f;
 
     public static int LEVEL_COUNT = 3;
@@ -43,13 +49,15 @@ public final class MazeGame extends ApplicationAdapter {
             "#############"
     };
     private static final String[] LAYOUT_3 = {
-            "#######",
-            "#...#.#",
-            "#.#.#.#",
-            "#.#...#",
-            "#.###.#",
-            "#...#.#",
-            "#######",
+            "#############",
+            "#..#.....##.#",
+            "##.#.#.....##",
+            "#..##..##...#",
+            "##.....####.#",
+            "#...####....#",
+            "##.##..#.##.#",
+            "##.......##.#",
+            "#############"
     };
 
     public static final int INITIAL_WINDOW_WIDTH = LAYOUT_1[0].length() * TILE_SIZE;
@@ -59,11 +67,17 @@ public final class MazeGame extends ApplicationAdapter {
     private MazeRules rules;
     private GridEntity player;
     private GridEntity enemy;
+    private EnemyState enemyState;
+    private float enemyStateElapsedTime = 0f;
     private ShapeRenderer renderer;
     private OrthographicCamera camera;
     private Viewport viewport;
     private GameState gameState;
     private EnemyController enemyController;
+    private FleeBehaviour fleeBehaviour;
+    private ChaseBehaviour chaseBehaviour;
+    private Cell fruit;
+    private Color enemyColor = Color.RED;
     private float elapsedTime;
 
     @Override
@@ -78,8 +92,10 @@ public final class MazeGame extends ApplicationAdapter {
         float delta = Gdx.graphics.getDeltaTime();
         if(gameState == GameState.PLAYING){
             handleInput();
+            updateFruit(delta);
             enemyController.update(delta, enemy, player);
             updateGameState();
+
         }
         else{
             updateFinishedState(delta);
@@ -123,9 +139,18 @@ public final class MazeGame extends ApplicationAdapter {
     public void loadLevel(int level){
         levelNumber = level;
         switch(levelNumber){
-            case 1 -> createLevel(LAYOUT_1, 5, 11, 7, 1, 1, 1);
-            case 2 -> createLevel(LAYOUT_2,1,7,7,1,1,2);
-            case 3 -> createLevel(LAYOUT_3,1,5,5,3,4,5);
+            case 1 -> {
+                createLevel(LAYOUT_1, 5, 11, 7, 1, 1, 1);
+            fruit = new Cell(7,11);
+            }
+            case 2 -> {
+                createLevel(LAYOUT_2,1,7,7,1,1,2);
+            fruit = new Cell(7,11);
+            }
+            case 3 -> {
+                createLevel(LAYOUT_3,4,6,7,11,1,1);
+                fruit = new Cell(3,5);
+            }
             default -> throw new IllegalStateException("unknown level");
         }
         gameState = GameState.PLAYING;
@@ -167,9 +192,11 @@ public final class MazeGame extends ApplicationAdapter {
 
         enemyController = new EnemyController(
                 ENEMY_MOVE_INTERVAL,
-                map,
-                new PathFinder()
+                map
         );
+        chaseBehaviour = new ChaseBehaviour(new PathFinder());
+        fleeBehaviour = new FleeBehaviour(new PathFinder());
+        enemyController.setEnemyBehaviour(chaseBehaviour);
     }
 
 
@@ -227,15 +254,17 @@ public final class MazeGame extends ApplicationAdapter {
 
 
     private void updateGameState() {
-        if (
-                enemy.occupies(
-                        player.row(),
-                        player.column()
-                )
-        ) {
-            gameState = GameState.CAUGHT;
+        if (enemy.occupies(player.row(), player.column())) {
             elapsedTime = 0;
-            return;
+            if(enemyState == EnemyState.CHASING){
+                gameState = GameState.CAUGHT;
+                return;
+            }
+            else{
+                enemy = null;
+                return;
+            }
+
         }
 
 
@@ -276,6 +305,36 @@ public final class MazeGame extends ApplicationAdapter {
         }
     }
 
+    private void updateFruit(float delta){
+        if (fruit == null){
+            if(enemyStateElapsedTime <= FLEE_DURATION){
+                enemyStateElapsedTime += delta;
+            }
+            else{
+                updateEnemyState(EnemyState.CHASING);
+            }
+            return;
+        }
+        if (player.occupies(fruit.row(),fruit.column())){
+            fruit = null;
+            updateEnemyState(EnemyState.FLEEING);
+        }
+    }
+
+    private void updateEnemyState(EnemyState state){
+       enemyStateElapsedTime = 0f;
+        if (state == EnemyState.FLEEING){
+            enemyController.setEnemyBehaviour(fleeBehaviour);
+            enemyColor = Color.NAVY;
+        }
+        if(state == EnemyState.CHASING){
+            enemyController.setEnemyBehaviour(chaseBehaviour);
+            enemyColor = Color.RED;
+        }
+        enemyState = state;
+
+    }
+
 
     private void renderGame() {
         Gdx.gl.glClearColor(
@@ -310,6 +369,9 @@ public final class MazeGame extends ApplicationAdapter {
                 Color.GREEN
         );
 
+        if (fruit != null){
+            drawCell(fruit.row(), fruit.column(), Color.MAGENTA);
+        }
 
         drawCell(
                 player.row(),
@@ -327,7 +389,7 @@ public final class MazeGame extends ApplicationAdapter {
         drawCell(
                 enemy.row(),
                 enemy.column(),
-                Color.RED
+                enemyColor
         );
 
 

@@ -1,5 +1,7 @@
 package com.maze;
 
+import com.badlogic.gdx.utils.Array;
+
 import java.util.ArrayDeque;
 import java.util.Queue;
 
@@ -106,5 +108,24 @@ public final class PathFinder {
 
             current = previous;
         }
+    }
+    public Cell furthestCell(MazeMap map, Cell start){
+        Queue<Cell> queue = new ArrayDeque<>();
+        boolean[][] visited = new boolean[map.rows()][map.columns()];
+        visited[start.row()][start.column()] = true;
+        queue.offer(start);
+        Cell farthest = start;
+        while(!queue.isEmpty()){
+            Cell current = queue.poll();
+            farthest = current;
+            for(Cell neighbour : map.neighbors(current)){
+                if(!visited[neighbour.row()][neighbour.column()]){
+                    visited[neighbour.row()][neighbour.column()] = true;
+                    queue.offer(neighbour);
+                }
+            }
+        }
+        return farthest;
+
     }
 }
