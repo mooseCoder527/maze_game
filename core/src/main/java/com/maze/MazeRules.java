@@ -14,7 +14,8 @@ public final class MazeRules {
         if (!map.isWalkable(entity.row() + rowChange,entity.column() + columnChange)){
             return false;
         }
-        if (blocker.occupies(next_row,next_column)){
+
+        if (blocker != null && blocker.occupies(next_row,next_column)){
             return false;
         }
         entity.moveTo(next_row,next_column);
