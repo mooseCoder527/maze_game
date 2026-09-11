@@ -93,7 +93,10 @@ public final class MazeGame extends ApplicationAdapter {
         if(gameState == GameState.PLAYING){
             handleInput();
             updateFruit(delta);
-            enemyController.update(delta, enemy, player);
+            if(enemy != null){
+                enemyController.update(delta, enemy, player);
+            }
+
             updateGameState();
 
         }
@@ -117,22 +120,22 @@ public final class MazeGame extends ApplicationAdapter {
     private void handleInput() {
         if (Gdx.input.isKeyJustPressed(Input.Keys.W)
             || Gdx.input.isKeyJustPressed(Input.Keys.UP)) {
-            rules.tryMove(player, enemy, -1, 0);
+            rules.tryMove(player, null, -1, 0);
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.S)
             || Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) {
-            rules.tryMove(player, enemy, 1, 0);
+            rules.tryMove(player, null, 1, 0);
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.A)
             || Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) {
-            rules.tryMove(player, enemy, 0, -1);
+            rules.tryMove(player, null, 0, -1);
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.D)
             || Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) {
-            rules.tryMove(player, enemy, 0, 1);
+            rules.tryMove(player, null, 0, 1);
         }
     }
 
@@ -188,12 +191,15 @@ public final class MazeGame extends ApplicationAdapter {
                 enemyRow,
                 enemyColumn
         );
+        enemyColor = Color.RED;
+
 
 
         enemyController = new EnemyController(
                 ENEMY_MOVE_INTERVAL,
                 map
         );
+        updateEnemyState(EnemyState.CHASING);
         chaseBehaviour = new ChaseBehaviour(new PathFinder());
         fleeBehaviour = new FleeBehaviour(new PathFinder());
         enemyController.setEnemyBehaviour(chaseBehaviour);
@@ -254,7 +260,7 @@ public final class MazeGame extends ApplicationAdapter {
 
 
     private void updateGameState() {
-        if (enemy.occupies(player.row(), player.column())) {
+        if (enemy != null && enemy.occupies(player.row(), player.column())) {
             elapsedTime = 0;
             if(enemyState == EnemyState.CHASING){
                 gameState = GameState.CAUGHT;
@@ -386,11 +392,14 @@ public final class MazeGame extends ApplicationAdapter {
          * When both occupy the same cell, the enemy remains visible
          * and clearly shows that the player was caught.
          */
-        drawCell(
-                enemy.row(),
-                enemy.column(),
-                enemyColor
-        );
+        if( enemy != null){
+            drawCell(
+                    enemy.row(),
+                    enemy.column(),
+                    enemyColor
+            );
+        }
+
 
 
         renderer.end();
