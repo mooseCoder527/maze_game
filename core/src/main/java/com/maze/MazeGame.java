@@ -14,6 +14,8 @@ import com.maze.behaviours.EnemyBehaviour;
 import com.maze.behaviours.FleeBehaviour;
 import com.maze.states.EnemyState;
 
+import java.util.Random;
+
 import static com.maze.EnemyController.*;
 import static java.lang.Thread.sleep;
 
@@ -79,7 +81,6 @@ public final class MazeGame extends ApplicationAdapter {
     private Cell fruit;
     private Color enemyColor = Color.RED;
     private float elapsedTime;
-
     @Override
     public void create() {
         renderer = new ShapeRenderer();
