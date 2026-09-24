@@ -1,5 +1,7 @@
 package com.maze;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.Stack;
 
@@ -33,5 +35,45 @@ public class MazeGenerator {
             return false;
         }
         return true;
+    }
+
+    private List<Cell> unvisitedNeighbors(
+            Cell current,
+            boolean[][] visited,
+            int rows,
+            int columns
+    ) {
+        int[][] directions = {
+                {-2, 0},
+                {0, 2},
+                {2, 0},
+                {0, -2}
+        };
+
+        List<Cell> neighbors =
+                new ArrayList<>(4);
+
+        for (int[] direction : directions) {
+
+            int row =
+                    current.row()
+                            + direction[0];
+
+            int column =
+                    current.column()
+                            + direction[1];
+
+            if (row <= 0
+                            || row >= rows - 1
+                            || column <= 0
+                            || column >= columns - 1
+            ) {
+                continue;
+            }
+
+            if (!visited[row][column]) { neighbors.add( new Cell( row, column));
+            }
+        }
+        return neighbors;
     }
 }
