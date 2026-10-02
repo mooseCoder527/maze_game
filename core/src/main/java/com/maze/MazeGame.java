@@ -21,49 +21,10 @@ import static java.lang.Thread.sleep;
 
 public final class MazeGame extends ApplicationAdapter {
     public static final int TILE_SIZE = 48;
-
-    public static final float ENEMY_MOVE_INTERVAL = 0.5f;
-    public static final float FLEE_DURATION = 15f;
     public static final float LEVEL_TRANSITION_DELAY = 1.0f;
-
-    public static int LEVEL_COUNT = 3;
-
-    private static final String[] LAYOUT_1 = {
-            "#############",
-            "#.....#.....#",
-            "#.###.#.###.#",
-            "#...#.#...#.#",
-            "###.#.###.#.#",
-            "#...#.....#.#",
-            "#.#########.#",
-            "#...........#",
-            "#############"
-    };
-    private static final String[] LAYOUT_2 = {
-            "#############",
-            "#.......#####",
-            "#.###.#.###.#",
-            "#...#.#...#.#",
-            "###.#.###.#.#",
-            "#...#.......#",
-            "#.#########.#",
-            "#...........#",
-            "#############"
-    };
-    private static final String[] LAYOUT_3 = {
-            "#############",
-            "#..#.....##.#",
-            "##.#.#.....##",
-            "#..##..##...#",
-            "##.....####.#",
-            "#...####....#",
-            "##.##..#.##.#",
-            "##.......##.#",
-            "#############"
-    };
-
-    public static final int INITIAL_WINDOW_WIDTH = LAYOUT_1[0].length() * TILE_SIZE;
-    public static final int INITIAL_WINDOW_HEIGHT = LAYOUT_1.length * TILE_SIZE;
+    public static int LEVEL_COUNT = 750;
+    public static final int INITIAL_WINDOW_WIDTH = 25 * TILE_SIZE;
+    public static final int INITIAL_WINDOW_HEIGHT = 20 * TILE_SIZE;
     private int levelNumber = 1;
     private MazeMap map;
     private MazeRules rules;
@@ -75,9 +36,12 @@ public final class MazeGame extends ApplicationAdapter {
     private OrthographicCamera camera;
     private Viewport viewport;
     private GameState gameState;
+    private final MazeGenerator mazeGenerator = new MazeGenerator();
+    private LevelDifficulty levelDifficulty;
     private EnemyController enemyController;
     private FleeBehaviour fleeBehaviour;
     private ChaseBehaviour chaseBehaviour;
+    private final PathFinder pathFinder = new PathFinder();
     private Cell fruit;
     private Color enemyColor = Color.RED;
     private float elapsedTime;
@@ -140,70 +104,37 @@ public final class MazeGame extends ApplicationAdapter {
         }
     }
 
+
     public void loadLevel(int level){
-        levelNumber = level;
-        switch(levelNumber){
-            case 1 -> {
-                createLevel(LAYOUT_1, 5, 11, 7, 1, 1, 1);
-            fruit = new Cell(7,11);
-            }
-            case 2 -> {
-                createLevel(LAYOUT_2,1,7,7,1,1,2);
-            fruit = new Cell(7,11);
-            }
-            case 3 -> {
-                createLevel(LAYOUT_3,4,6,7,11,1,1);
-                fruit = new Cell(3,5);
-            }
-            default -> throw new IllegalStateException("unknown level");
+        if(level < 1|| level > LEVEL_COUNT){
+            throw new IllegalArgumentException("Level number is invalid! level : " + level);
         }
+        levelNumber = level;
+        createLevel(level);
+        levelDifficulty = LevelDifficulty.calculateDifficulty(level, LEVEL_COUNT);
         gameState = GameState.PLAYING;
         elapsedTime = 0;
         configureViewport();
-
     }
 
+
     private void createLevel(
-            String[] layout,
-            int exitRow,
-            int exitColumn,
-            int playerRow,
-            int playerColumn,
-            int enemyRow,
-            int enemyColumn
+            int level
     ) {
-        map = new MazeMap(
-                layout,
-                exitRow,
-                exitColumn
-        );
+        String[] layout = mazeGenerator.generateLevel(levelDifficulty.mazeRows(),levelDifficulty.mazeColumns(),level);
+        Cell playerCell = new Cell(1,1);
+        MazeMap generatedMap = new MazeMap(layout, playerCell.row(), playerCell.column());
+        Cell exitCell = pathFinder.furthestCell(generatedMap, playerCell);
 
-
+        player = new GridEntity(playerCell.row(), playerCell.column());
+        GridEntity exitEntity = new GridEntity(exitCell.row(), exitCell.column());
+        Cell enemyCell = pathFinder.nextStep(map, exitEntity, player);
+        enemy = new GridEntity(enemyCell.row(), enemyCell.column());
+        fleeBehaviour = new FleeBehaviour(pathFinder);
+        chaseBehaviour = new ChaseBehaviour(pathFinder);
+        map = new MazeMap(layout, exitCell.row(), exitCell.column());
+        enemyController = new EnemyController(levelDifficulty.enemyMoveInterval(),map);
         rules = new MazeRules(map);
-
-
-        player = new GridEntity(
-                playerRow,
-                playerColumn
-        );
-
-
-        enemy = new GridEntity(
-                enemyRow,
-                enemyColumn
-        );
-        enemyColor = Color.RED;
-
-
-
-        enemyController = new EnemyController(
-                ENEMY_MOVE_INTERVAL,
-                map
-        );
-        updateEnemyState(EnemyState.CHASING);
-        chaseBehaviour = new ChaseBehaviour(new PathFinder());
-        fleeBehaviour = new FleeBehaviour(new PathFinder());
-        enemyController.setEnemyBehaviour(chaseBehaviour);
     }
 
 
@@ -326,6 +257,10 @@ public final class MazeGame extends ApplicationAdapter {
             fruit = null;
             updateEnemyState(EnemyState.FLEEING);
         }
+    }
+
+    private Cell placeFruit(int level,Cell player, Cell enemy, Cell exit){
+        gi
     }
 
     private void updateEnemyState(EnemyState state){
