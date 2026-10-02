@@ -1,9 +1,6 @@
 package com.maze;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.Stack;
+import java.util.*;
 
 public class MazeGenerator {
 
@@ -20,6 +17,9 @@ public class MazeGenerator {
         stack.push(start);
         visited[start.row()][start.column()] = true;
         layout[start.row()][start.column()] = '.';
+        for(char[] firstDimension : layout){
+            Arrays.fill(firstDimension, '#');
+        }
         while (!stack.isEmpty()) {
             Cell current = stack.peek();
             List<Cell> neighbours = unvisitedNeighbors(current,visited,rows,columns);
@@ -96,7 +96,7 @@ public class MazeGenerator {
         //[[#.#.###]
          //[#...###]]
         String[] result = new String[layout.length];
-        for(int row = 0; row <= layout.length; row++){
+        for(int row = 0; row < layout.length; row++){
             result[row] = new String(layout[row]);
         }
         return result;
