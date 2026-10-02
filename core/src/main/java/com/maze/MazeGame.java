@@ -137,6 +137,8 @@ public final class MazeGame extends ApplicationAdapter {
         map = new MazeMap(layout, exitCell.row(), exitCell.column());
         enemyController = new EnemyController(levelDifficulty.enemyMoveInterval(),map);
         rules = new MazeRules(map);
+        fruit = placeFruit(level,playerCell,enemyCell,exitCell);
+        updateEnemyState(EnemyState.CHASING);
     }
 
 
@@ -247,7 +249,7 @@ public final class MazeGame extends ApplicationAdapter {
 
     private void updateFruit(float delta){
         if (fruit == null){
-            if(enemyStateElapsedTime <= FLEE_DURATION){
+            if(enemyStateElapsedTime <= levelDifficulty.fleeDuration()){
                 enemyStateElapsedTime += delta;
             }
             else{
