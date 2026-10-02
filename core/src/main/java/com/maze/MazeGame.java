@@ -112,8 +112,8 @@ public final class MazeGame extends ApplicationAdapter {
             throw new IllegalArgumentException("Level number is invalid! level : " + level);
         }
         levelNumber = level;
-        createLevel(level);
         levelDifficulty = LevelDifficulty.calculateDifficulty(level, LEVEL_COUNT);
+        createLevel(level);
         gameState = GameState.PLAYING;
         elapsedTime = 0;
         configureViewport();
@@ -124,13 +124,13 @@ public final class MazeGame extends ApplicationAdapter {
             int level
     ) {
         String[] layout = mazeGenerator.generateLevel(levelDifficulty.mazeRows(),levelDifficulty.mazeColumns(),level);
-        Cell playerCell = new Cell(1,1);
+        Cell playerCell = new Cell(2,2);
         MazeMap generatedMap = new MazeMap(layout, playerCell.row(), playerCell.column());
         Cell exitCell = pathFinder.furthestCell(generatedMap, playerCell);
 
         player = new GridEntity(playerCell.row(), playerCell.column());
         GridEntity exitEntity = new GridEntity(exitCell.row(), exitCell.column());
-        Cell enemyCell = pathFinder.nextStep(map, exitEntity, player);
+        Cell enemyCell = pathFinder.nextStep(generatedMap, exitEntity, player);
         enemy = new GridEntity(enemyCell.row(), enemyCell.column());
         fleeBehaviour = new FleeBehaviour(pathFinder);
         chaseBehaviour = new ChaseBehaviour(pathFinder);
