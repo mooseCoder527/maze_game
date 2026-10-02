@@ -14,6 +14,8 @@ import com.maze.behaviours.EnemyBehaviour;
 import com.maze.behaviours.FleeBehaviour;
 import com.maze.states.EnemyState;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 import static com.maze.EnemyController.*;
@@ -260,7 +262,54 @@ public final class MazeGame extends ApplicationAdapter {
     }
 
     private Cell placeFruit(int level,Cell player, Cell enemy, Cell exit){
-        gi
+        List<Cell> candidates =
+                new ArrayList<>();
+
+        for (
+                int row = 0;
+                row < map.rows();
+                row++
+        ) {
+            for (
+                    int column = 0;
+                    column < map.columns();
+                    column++
+            ) {
+                if (!map.isWalkable(
+                        row,
+                        column
+                )) {
+                    continue;
+                }
+
+                Cell candidate =
+                        new Cell(
+                                row,
+                                column
+                        );
+
+                if (
+                        candidate.equals(player)
+                                || candidate.equals(enemy)
+                                || candidate.equals(exit)
+                ) {
+                    continue;
+                }
+
+                candidates.add(candidate);
+            }
+        }
+
+        Random random =
+                new Random(
+                        level * 17L
+                );
+
+        return candidates.get(
+                random.nextInt(
+                        candidates.size()
+                )
+        );
     }
 
     private void updateEnemyState(EnemyState state){
