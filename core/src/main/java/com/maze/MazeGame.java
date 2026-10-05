@@ -10,35 +10,28 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.maze.behaviours.ChaseBehaviour;
-import com.maze.behaviours.EnemyBehaviour;
 import com.maze.behaviours.FleeBehaviour;
 import com.maze.states.EnemyState;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-
-import static com.maze.EnemyController.*;
-import static java.lang.Thread.sleep;
 
 public final class MazeGame extends ApplicationAdapter {
     public static final int TILE_SIZE = 48;
     public static final float LEVEL_TRANSITION_DELAY = 1.0f;
-    public static int LEVEL_COUNT = 750;
+    public static final int LEVEL_COUNT = 750;
     public static final int INITIAL_WINDOW_WIDTH = 25 * TILE_SIZE;
     public static final int INITIAL_WINDOW_HEIGHT = 20 * TILE_SIZE;
+
     private int levelNumber = 1;
     private MazeMap map;
     private MazeRules rules;
     private GridEntity player;
     private GridEntity enemy;
     private EnemyState enemyState;
-    private float enemyStateElapsedTime = 0f;
+    private float enemyStateElapsedTime;
     private ShapeRenderer renderer;
     private OrthographicCamera camera;
     private Viewport viewport;
     private GameState gameState;
-    private final MazeGenerator mazeGenerator = new MazeGenerator();
+    private final ProceduralLevelFactory levelFactory = new ProceduralLevelFactory();
     private LevelDifficulty levelDifficulty;
     private EnemyController enemyController;
     private FleeBehaviour fleeBehaviour;
@@ -47,6 +40,7 @@ public final class MazeGame extends ApplicationAdapter {
     private Cell fruit;
     private Color enemyColor = Color.RED;
     private float elapsedTime;
+
     @Override
     public void create() {
         renderer = new ShapeRenderer();
@@ -57,60 +51,66 @@ public final class MazeGame extends ApplicationAdapter {
     @Override
     public void render() {
         float delta = Gdx.graphics.getDeltaTime();
-        if(gameState == GameState.PLAYING){
+
+        if (gameState == GameState.PLAYING) {
             handleInput();
             updateFruit(delta);
-            if(enemy != null){
-                enemyController.update(delta, enemy, player);
-            }
 
+            // Resolve collisions caused by player movement before the enemy gets another turn.
             updateGameState();
 
-        }
-        else{
+            if (gameState == GameState.PLAYING && enemy != null) {
+                enemyController.update(delta, enemy, player);
+
+                // Resolve collisions caused by enemy movement.
+                updateGameState();
+            }
+        } else {
             updateFinishedState(delta);
         }
+
         renderGame();
         updateWindowTitle();
     }
 
     private void updateWindowTitle() {
-        String title = switch(gameState){
-            case GameState.PLAYING -> "Maze Escape - level: " + levelNumber;
-            case GameState.CAUGHT -> "Caught! press r to restart.";
-            case GameState.ESCAPED -> "You Escaped Level " + levelNumber;
+        String title = switch (gameState) {
+            case PLAYING -> "Maze Escape - level: " + levelNumber;
+            case CAUGHT -> "Caught! press r to restart.";
+            case ESCAPED -> "You Escaped Level " + levelNumber;
         };
         Gdx.graphics.setTitle(title);
     }
 
-
     private void handleInput() {
         if (Gdx.input.isKeyJustPressed(Input.Keys.W)
-            || Gdx.input.isKeyJustPressed(Input.Keys.UP)) {
+                || Gdx.input.isKeyJustPressed(Input.Keys.UP)) {
             rules.tryMove(player, null, -1, 0);
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.S)
-            || Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) {
+                || Gdx.input.isKeyJustPressed(Input.Keys.DOWN)) {
             rules.tryMove(player, null, 1, 0);
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.A)
-            || Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) {
+                || Gdx.input.isKeyJustPressed(Input.Keys.LEFT)) {
             rules.tryMove(player, null, 0, -1);
         }
 
         if (Gdx.input.isKeyJustPressed(Input.Keys.D)
-            || Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) {
+                || Gdx.input.isKeyJustPressed(Input.Keys.RIGHT)) {
             rules.tryMove(player, null, 0, 1);
         }
     }
 
-
-    public void loadLevel(int level){
-        if(level < 1|| level > LEVEL_COUNT){
-            throw new IllegalArgumentException("Level number is invalid! level : " + level);
+    public void loadLevel(int level) {
+        if (level < 1 || level > LEVEL_COUNT) {
+            throw new IllegalArgumentException(
+                    "Level number is invalid! level: " + level
+            );
         }
+
         levelNumber = level;
         levelDifficulty = LevelDifficulty.calculateDifficulty(level, LEVEL_COUNT);
         createLevel(level);
@@ -119,67 +119,60 @@ public final class MazeGame extends ApplicationAdapter {
         configureViewport();
     }
 
+    private void createLevel(int level) {
+        GeneratedLevel generated = levelFactory.generate(level, levelDifficulty);
 
-    private void createLevel(
-            int level
-    ) {
-        String[] layout = mazeGenerator.generateLevel(levelDifficulty.mazeRows(),levelDifficulty.mazeColumns(),level);
-        Cell playerCell = new Cell(1,1);
-        MazeMap generatedMap = new MazeMap(layout, playerCell.row(), playerCell.column());
-        Cell exitCell = pathFinder.furthestCell(generatedMap, playerCell);
+        map = new MazeMap(
+                generated.layout(),
+                generated.exit().row(),
+                generated.exit().column()
+        );
 
-        player = new GridEntity(playerCell.row(), playerCell.column());
-        GridEntity exitEntity = new GridEntity(exitCell.row(), exitCell.column());
-        Cell enemyCell = pathFinder.nextStep(generatedMap, exitEntity, player);
-        enemy = new GridEntity(enemyCell.row(), enemyCell.column());
+        player = new GridEntity(
+                generated.player().row(),
+                generated.player().column()
+        );
+
+        enemy = new GridEntity(
+                generated.enemy().row(),
+                generated.enemy().column()
+        );
+
+        fruit = generated.fruit();
+
         fleeBehaviour = new FleeBehaviour(pathFinder);
         chaseBehaviour = new ChaseBehaviour(pathFinder);
-        map = new MazeMap(layout, exitCell.row(), exitCell.column());
-        enemyController = new EnemyController(levelDifficulty.enemyMoveInterval(),map);
+        enemyController = new EnemyController(levelDifficulty.enemyMoveInterval(), map);
         rules = new MazeRules(map);
-        fruit = placeFruit(level,playerCell,enemyCell,exitCell);
+
         updateEnemyState(EnemyState.CHASING);
     }
 
-
     private void configureViewport() {
-        float worldWidth =
-                map.columns() * TILE_SIZE;
+        float worldWidth = map.columns() * TILE_SIZE;
+        float worldHeight = map.rows() * TILE_SIZE;
 
-
-        float worldHeight =
-                map.rows() * TILE_SIZE;
-
-
-        viewport = new FitViewport(
-                worldWidth,
-                worldHeight,
-                camera
-        );
-
-
+        viewport = new FitViewport(worldWidth, worldHeight, camera);
         viewport.update(
                 Gdx.graphics.getWidth(),
                 Gdx.graphics.getHeight(),
                 true
         );
 
-
         camera.position.set(
                 worldWidth / 2f,
                 worldHeight / 2f,
                 0
         );
-
-
         camera.update();
     }
+
     private void drawMap() {
         for (int row = 0; row < map.rows(); row++) {
             for (int column = 0; column < map.columns(); column++) {
                 Color color = map.isWall(row, column)
-                    ? Color.DARK_GRAY
-                    : Color.valueOf("20242b");
+                        ? Color.DARK_GRAY
+                        : Color.valueOf("20242b");
 
                 drawCell(row, column, color);
             }
@@ -194,140 +187,74 @@ public final class MazeGame extends ApplicationAdapter {
         renderer.rect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
     }
 
-
     private void updateGameState() {
         if (enemy != null && enemy.occupies(player.row(), player.column())) {
             elapsedTime = 0;
-            if(enemyState == EnemyState.CHASING){
+
+            if (enemyState == EnemyState.CHASING) {
                 gameState = GameState.CAUGHT;
                 return;
             }
-            else{
-                enemy = null;
-                return;
-            }
 
+            enemy = null;
+            return;
         }
 
-
-        if (
-                map.isExit(
-                        player.row(),
-                        player.column()
-                )
-        ) {
+        if (map.isExit(player.row(), player.column())) {
             gameState = GameState.ESCAPED;
             elapsedTime = 0;
         }
     }
 
-
     private void updateFinishedState(float delta) {
-        if (
-                Gdx.input.isKeyJustPressed(Input.Keys.R)
-        ) {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.R)) {
             loadLevel(levelNumber);
             return;
         }
 
-
-        if (
-                gameState == GameState.ESCAPED
-                        && levelNumber < LEVEL_COUNT
-        ) {
+        if (gameState == GameState.ESCAPED && levelNumber < LEVEL_COUNT) {
             elapsedTime += delta;
-            System.out.println(elapsedTime);
 
-            if (
-                    elapsedTime
-                            >= LEVEL_TRANSITION_DELAY
-            ) {
+            if (elapsedTime >= LEVEL_TRANSITION_DELAY) {
                 loadLevel(levelNumber + 1);
             }
         }
     }
 
-    private void updateFruit(float delta){
-        if (fruit == null){
-            if(enemyStateElapsedTime <= levelDifficulty.fleeDuration()){
-                enemyStateElapsedTime += delta;
-            }
-            else{
-                updateEnemyState(EnemyState.CHASING);
+    private void updateFruit(float delta) {
+        if (fruit != null) {
+            if (player.occupies(fruit.row(), fruit.column())) {
+                fruit = null;
+                updateEnemyState(EnemyState.FLEEING);
             }
             return;
         }
-        if (player.occupies(fruit.row(),fruit.column())){
-            fruit = null;
-            updateEnemyState(EnemyState.FLEEING);
+
+        // Only run the flee timer while the enemy is actually fleeing.
+        if (enemyState != EnemyState.FLEEING) {
+            return;
+        }
+
+        enemyStateElapsedTime += delta;
+
+        if (enemyStateElapsedTime >= levelDifficulty.fleeDuration()) {
+            updateEnemyState(EnemyState.CHASING);
         }
     }
 
-    private Cell placeFruit(int level,Cell player, Cell enemy, Cell exit){
-        List<Cell> candidates =
-                new ArrayList<>();
+    private void updateEnemyState(EnemyState state) {
+        enemyStateElapsedTime = 0f;
 
-        for (
-                int row = 0;
-                row < map.rows();
-                row++
-        ) {
-            for (
-                    int column = 0;
-                    column < map.columns();
-                    column++
-            ) {
-                if (!map.isWalkable(
-                        row,
-                        column
-                )) {
-                    continue;
-                }
-
-                Cell candidate =
-                        new Cell(
-                                row,
-                                column
-                        );
-
-                if (
-                        candidate.equals(player)
-                                || candidate.equals(enemy)
-                                || candidate.equals(exit)
-                ) {
-                    continue;
-                }
-
-                candidates.add(candidate);
-            }
-        }
-
-        Random random =
-                new Random(
-                        level * 17L
-                );
-
-        return candidates.get(
-                random.nextInt(
-                        candidates.size()
-                )
-        );
-    }
-
-    private void updateEnemyState(EnemyState state){
-       enemyStateElapsedTime = 0f;
-        if (state == EnemyState.FLEEING){
+        if (state == EnemyState.FLEEING) {
             enemyController.setEnemyBehaviour(fleeBehaviour);
             enemyColor = Color.NAVY;
-        }
-        if(state == EnemyState.CHASING){
+        } else {
             enemyController.setEnemyBehaviour(chaseBehaviour);
             enemyColor = Color.RED;
         }
+
         enemyState = state;
-
     }
-
 
     private void renderGame() {
         Gdx.gl.glClearColor(
@@ -337,24 +264,11 @@ public final class MazeGame extends ApplicationAdapter {
                 1f
         );
 
-
-        Gdx.gl.glClear(
-                GL20.GL_COLOR_BUFFER_BIT
-        );
-
-
-        renderer.setProjectionMatrix(
-                camera.combined
-        );
-
-
-        renderer.begin(
-                ShapeRenderer.ShapeType.Filled
-        );
-
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+        renderer.setProjectionMatrix(camera.combined);
+        renderer.begin(ShapeRenderer.ShapeType.Filled);
 
         drawMap();
-
 
         drawCell(
                 map.exitRow(),
@@ -362,8 +276,12 @@ public final class MazeGame extends ApplicationAdapter {
                 Color.GREEN
         );
 
-        if (fruit != null){
-            drawCell(fruit.row(), fruit.column(), Color.MAGENTA);
+        if (fruit != null) {
+            drawCell(
+                    fruit.row(),
+                    fruit.column(),
+                    Color.MAGENTA
+            );
         }
 
         drawCell(
@@ -372,22 +290,13 @@ public final class MazeGame extends ApplicationAdapter {
                 Color.CYAN
         );
 
-
-        /*
-         * Draw the enemy after the player.
-         *
-         * When both occupy the same cell, the enemy remains visible
-         * and clearly shows that the player was caught.
-         */
-        if( enemy != null){
+        if (enemy != null) {
             drawCell(
                     enemy.row(),
                     enemy.column(),
                     enemyColor
             );
         }
-
-
 
         renderer.end();
     }
