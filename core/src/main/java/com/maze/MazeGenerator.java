@@ -9,17 +9,16 @@ public class MazeGenerator {
         if (!validateSize(columns, rows)) {
             throw new IllegalArgumentException("Size is invalid!!");
         }
-        String[] level;
         char[][] layout = new char[rows][columns];
+        for(char[] firstDimension : layout){
+            Arrays.fill(firstDimension, '#');
+        }
         boolean[][] visited = new boolean[rows][columns];
         Stack<Cell> stack = new Stack<Cell>();
         Cell start = new Cell(1, 1);
         stack.push(start);
         visited[start.row()][start.column()] = true;
         layout[start.row()][start.column()] = '.';
-        for(char[] firstDimension : layout){
-            Arrays.fill(firstDimension, '#');
-        }
         while (!stack.isEmpty()) {
             Cell current = stack.peek();
             List<Cell> neighbours = unvisitedNeighbors(current,visited,rows,columns);

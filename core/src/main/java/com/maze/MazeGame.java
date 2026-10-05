@@ -124,7 +124,7 @@ public final class MazeGame extends ApplicationAdapter {
             int level
     ) {
         String[] layout = mazeGenerator.generateLevel(levelDifficulty.mazeRows(),levelDifficulty.mazeColumns(),level);
-        Cell playerCell = new Cell(2,2);
+        Cell playerCell = new Cell(1,1);
         MazeMap generatedMap = new MazeMap(layout, playerCell.row(), playerCell.column());
         Cell exitCell = pathFinder.furthestCell(generatedMap, playerCell);
 
