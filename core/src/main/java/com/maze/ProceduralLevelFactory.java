@@ -10,17 +10,8 @@ public final class ProceduralLevelFactory {
     private static final int MAX_GENERATION_ATTEMPTS = 64;
     private static final int GENERATION_SEED_STRIDE = 10_000;
 
-    private final MazeGenerator mazeGenerator;
-    private final PathFinder pathFinder;
-
-    public ProceduralLevelFactory() {
-        this(new MazeGenerator(), new PathFinder());
-    }
-
-    ProceduralLevelFactory(MazeGenerator mazeGenerator, PathFinder pathFinder) {
-        this.mazeGenerator = mazeGenerator;
-        this.pathFinder = pathFinder;
-    }
+    private final MazeGenerator mazeGenerator = new MazeGenerator();
+    private final PathFinder pathFinder = new PathFinder();
 
     public GeneratedLevel generate(int level, LevelDifficulty difficulty) {
         Cell playerCell = new Cell(1, 1);
