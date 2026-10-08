@@ -14,10 +14,6 @@ import com.maze.behaviours.EnemyBehaviour;
 import com.maze.behaviours.FleeBehaviour;
 import com.maze.states.EnemyState;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-
 import static com.maze.EnemyController.*;
 import static java.lang.Thread.sleep;
 
@@ -38,7 +34,7 @@ public final class MazeGame extends ApplicationAdapter {
     private OrthographicCamera camera;
     private Viewport viewport;
     private GameState gameState;
-    private final MazeGenerator mazeGenerator = new MazeGenerator();
+    private final ProceduralLevelFactory levelFactory = new ProceduralLevelFactory();
     private LevelDifficulty levelDifficulty;
     private EnemyController enemyController;
     private FleeBehaviour fleeBehaviour;
@@ -60,12 +56,11 @@ public final class MazeGame extends ApplicationAdapter {
         if(gameState == GameState.PLAYING){
             handleInput();
             updateFruit(delta);
-            if(enemy != null){
-                enemyController.update(delta, enemy, player);
-            }
-
             updateGameState();
-
+            if(gameState == GameState.PLAYING && enemy != null){
+                enemyController.update(delta, enemy, player);
+                updateGameState();
+            }
         }
         else{
             updateFinishedState(delta);
@@ -123,21 +118,15 @@ public final class MazeGame extends ApplicationAdapter {
     private void createLevel(
             int level
     ) {
-        String[] layout = mazeGenerator.generateLevel(levelDifficulty.mazeRows(),levelDifficulty.mazeColumns(),level);
-        Cell playerCell = new Cell(2,2);
-        MazeMap generatedMap = new MazeMap(layout, playerCell.row(), playerCell.column());
-        Cell exitCell = pathFinder.furthestCell(generatedMap, playerCell);
-
-        player = new GridEntity(playerCell.row(), playerCell.column());
-        GridEntity exitEntity = new GridEntity(exitCell.row(), exitCell.column());
-        Cell enemyCell = pathFinder.nextStep(generatedMap, exitEntity, player);
-        enemy = new GridEntity(enemyCell.row(), enemyCell.column());
+        GeneratedLevel generated = levelFactory.generate(level, levelDifficulty);
+        map = new MazeMap(generated.layout(), generated.exit().row(), generated.exit().column());
+        player = new GridEntity(generated.player().row(), generated.player().column());
+        enemy = new GridEntity(generated.enemy().row(), generated.enemy().column());
+        fruit = generated.fruit();
         fleeBehaviour = new FleeBehaviour(pathFinder);
         chaseBehaviour = new ChaseBehaviour(pathFinder);
-        map = new MazeMap(layout, exitCell.row(), exitCell.column());
         enemyController = new EnemyController(levelDifficulty.enemyMoveInterval(),map);
         rules = new MazeRules(map);
-        fruit = placeFruit(level,playerCell,enemyCell,exitCell);
         updateEnemyState(EnemyState.CHASING);
     }
 
@@ -249,10 +238,11 @@ public final class MazeGame extends ApplicationAdapter {
 
     private void updateFruit(float delta){
         if (fruit == null){
-            if(enemyStateElapsedTime <= levelDifficulty.fleeDuration()){
-                enemyStateElapsedTime += delta;
+            if(enemyState != EnemyState.FLEEING){
+                return;
             }
-            else{
+            enemyStateElapsedTime += delta;
+            if(enemyStateElapsedTime >= levelDifficulty.fleeDuration()){
                 updateEnemyState(EnemyState.CHASING);
             }
             return;
@@ -261,57 +251,6 @@ public final class MazeGame extends ApplicationAdapter {
             fruit = null;
             updateEnemyState(EnemyState.FLEEING);
         }
-    }
-
-    private Cell placeFruit(int level,Cell player, Cell enemy, Cell exit){
-        List<Cell> candidates =
-                new ArrayList<>();
-
-        for (
-                int row = 0;
-                row < map.rows();
-                row++
-        ) {
-            for (
-                    int column = 0;
-                    column < map.columns();
-                    column++
-            ) {
-                if (!map.isWalkable(
-                        row,
-                        column
-                )) {
-                    continue;
-                }
-
-                Cell candidate =
-                        new Cell(
-                                row,
-                                column
-                        );
-
-                if (
-                        candidate.equals(player)
-                                || candidate.equals(enemy)
-                                || candidate.equals(exit)
-                ) {
-                    continue;
-                }
-
-                candidates.add(candidate);
-            }
-        }
-
-        Random random =
-                new Random(
-                        level * 17L
-                );
-
-        return candidates.get(
-                random.nextInt(
-                        candidates.size()
-                )
-        );
     }
 
     private void updateEnemyState(EnemyState state){

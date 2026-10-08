@@ -1,9 +1,11 @@
 package com.maze;
 
-import com.badlogic.gdx.utils.Array;
 
 import java.util.ArrayDeque;
 import java.util.Queue;
+import java.util.Arrays;
+import java.util.List;
+import java.util.LinkedList;
 
 public final class PathFinder {
 
@@ -127,5 +129,52 @@ public final class PathFinder {
         }
         return farthest;
 
+    }
+
+    public List<Cell> shortestPath(MazeMap map, Cell start, Cell goal) {
+        Queue<Cell> frontier = new ArrayDeque<>();
+        boolean[][] visited = new boolean[map.rows()][map.columns()];
+        Cell[][] parent = new Cell[map.rows()][map.columns()];
+        frontier.offer(start);
+        visited[start.row()][start.column()] = true;
+
+        while (!frontier.isEmpty()) {
+            Cell current = frontier.poll();
+            if (current.equals(goal)) {
+                LinkedList<Cell> path = new LinkedList<>();
+                for (Cell cell = goal; cell != null; cell = parent[cell.row()][cell.column()]) {
+                    path.addFirst(cell);
+                }
+                return path;
+            }
+            for (Cell neighbor : map.neighbors(current)) {
+                if (visited[neighbor.row()][neighbor.column()]) continue;
+                visited[neighbor.row()][neighbor.column()] = true;
+                parent[neighbor.row()][neighbor.column()] = current;
+                frontier.offer(neighbor);
+            }
+        }
+        return List.of();
+    }
+
+    public int[][] distancesFrom(MazeMap map, Cell start) {
+        int[][] distances = new int[map.rows()][map.columns()];
+        for (int[] row : distances) {
+            Arrays.fill(row, -1);
+        }
+        Queue<Cell> frontier = new ArrayDeque<>();
+        frontier.offer(start);
+        distances[start.row()][start.column()] = 0;
+
+        while (!frontier.isEmpty()) {
+            Cell current = frontier.poll();
+            for (Cell neighbor : map.neighbors(current)) {
+                if (distances[neighbor.row()][neighbor.column()] != -1) continue;
+                distances[neighbor.row()][neighbor.column()] =
+                        distances[current.row()][current.column()] + 1;
+                frontier.offer(neighbor);
+            }
+        }
+        return distances;
     }
 }

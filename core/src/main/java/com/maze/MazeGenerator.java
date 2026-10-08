@@ -11,15 +11,15 @@ public class MazeGenerator {
         }
         String[] level;
         char[][] layout = new char[rows][columns];
+        for(char[] firstDimension : layout){
+            Arrays.fill(firstDimension, '#');
+        }
         boolean[][] visited = new boolean[rows][columns];
         Stack<Cell> stack = new Stack<Cell>();
         Cell start = new Cell(1, 1);
         stack.push(start);
         visited[start.row()][start.column()] = true;
         layout[start.row()][start.column()] = '.';
-        for(char[] firstDimension : layout){
-            Arrays.fill(firstDimension, '#');
-        }
         while (!stack.isEmpty()) {
             Cell current = stack.peek();
             List<Cell> neighbours = unvisitedNeighbors(current,visited,rows,columns);
@@ -36,10 +36,7 @@ public class MazeGenerator {
     }
 
     public boolean validateSize(int columns, int rows) {
-        if (rows < 1 || columns < 1) {
-            return false;
-        }
-        if (rows > 20 || columns > 20) {
+        if (rows < 5 || columns < 5 || rows % 2 == 0 || columns % 2 == 0) {
             return false;
         }
         return true;

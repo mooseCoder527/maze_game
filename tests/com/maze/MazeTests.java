@@ -1,14 +1,31 @@
 package com.maze;
 
+import java.util.Arrays;
+import java.util.List;
+
 public final class MazeTests {
     public static void main(String[] args) {
         keepsEntityPositionsIndependent();
         movesToWalkableCell();
         blocksWall();
         movingPlayerDoesNotMoveEnemy();
-        locksAnotherEntity();
+        blocksAnotherEntity();
+        difficultyProgressesAndKeepsOddMazeDimensions();
+        allGeneratedLevelsMeetPlayabilityContract();
+        generationIsDeterministic();
 
         System.out.println("All tests passed.");
+    }
+
+    private static MazeMap testMap() {
+        String[] layout = {
+                "#####",
+                "#...#",
+                "###.#",
+                "#...#",
+                "#####"
+        };
+        return new MazeMap(layout, 1, 1);
     }
 
     private static void keepsEntityPositionsIndependent() {
@@ -21,10 +38,10 @@ public final class MazeTests {
     }
 
     private static void movesToWalkableCell() {
-        MazeRules rules = new MazeRules(new MazeMap(5, 11));
+        MazeRules rules = new MazeRules(testMap());
         GridEntity player = new GridEntity(1, 1);
 
-        boolean moved = rules.tryMove(player, 0, 1);
+        boolean moved = rules.tryMove(player, null, 0, 1);
 
         assertTrue("walkable movement", moved);
         assertPosition("walkable movement position", player, 1, 2);
@@ -32,7 +49,7 @@ public final class MazeTests {
     }
 
     private static void blocksWall() {
-        MazeRules rules = new MazeRules(new MazeMap(5, 11));
+        MazeRules rules = new MazeRules(testMap());
         GridEntity player = new GridEntity(1, 1);
         GridEntity enemy = new GridEntity(1, 3);
 
@@ -44,7 +61,7 @@ public final class MazeTests {
     }
 
     private static void movingPlayerDoesNotMoveEnemy() {
-        MazeRules rules = new MazeRules(new MazeMap(5, 11));
+        MazeRules rules = new MazeRules(testMap());
         GridEntity player = new GridEntity(1, 1);
         GridEntity enemy = new GridEntity(1, 3);
 
@@ -56,7 +73,7 @@ public final class MazeTests {
     }
 
     private static void blocksAnotherEntity() {
-        MazeRules rules = new MazeRules(new MazeMap(5, 11));
+        MazeRules rules = new MazeRules(testMap());
         GridEntity player = new GridEntity(1, 1);
         GridEntity enemy = new GridEntity(1, 2);
 
@@ -66,6 +83,62 @@ public final class MazeTests {
         assertPosition("blocked player", player, 1, 1);
         assertPosition("stationary enemy", enemy, 1, 2);
         System.out.println("PASS: blocks another entity");
+    }
+
+    private static void difficultyProgressesAndKeepsOddMazeDimensions() {
+        LevelDifficulty first = LevelDifficulty.calculateDifficulty(1, 750);
+        LevelDifficulty middle = LevelDifficulty.calculateDifficulty(375, 750);
+        LevelDifficulty last = LevelDifficulty.calculateDifficulty(750, 750);
+        assertTrue("enemy interval progresses", first.enemyMoveInterval() > middle.enemyMoveInterval()
+                && middle.enemyMoveInterval() > last.enemyMoveInterval());
+        assertTrue("flee duration progresses", first.fleeDuration() > middle.fleeDuration()
+                && middle.fleeDuration() > last.fleeDuration());
+        for (int level = 1; level <= 750; level++) {
+            LevelDifficulty difficulty = LevelDifficulty.calculateDifficulty(level, 750);
+            assertTrue("odd maze rows", difficulty.mazeRows() % 2 != 0);
+            assertTrue("odd maze columns", difficulty.mazeColumns() % 2 != 0);
+            assertTrue("valid generated size",
+                    new MazeGenerator().validateSize(difficulty.mazeColumns(), difficulty.mazeRows()));
+        }
+    }
+
+    private static void allGeneratedLevelsMeetPlayabilityContract() {
+        ProceduralLevelFactory factory = new ProceduralLevelFactory();
+        PathFinder finder = new PathFinder();
+        for (int level = 1; level <= 750; level++) {
+            LevelDifficulty difficulty = LevelDifficulty.calculateDifficulty(level, 750);
+            GeneratedLevel generated = factory.generate(level, difficulty);
+            MazeMap map = new MazeMap(generated.layout(), generated.exit().row(), generated.exit().column());
+            assertTrue("player walkable at level " + level,
+                    map.isWalkable(generated.player().row(), generated.player().column()));
+            assertTrue("enemy walkable at level " + level,
+                    map.isWalkable(generated.enemy().row(), generated.enemy().column()));
+            assertTrue("fruit walkable at level " + level,
+                    map.isWalkable(generated.fruit().row(), generated.fruit().column()));
+            List<Cell> route = finder.shortestPath(map, generated.player(), generated.exit());
+            assertFalse("route exists at level " + level, route.isEmpty());
+            assertFalse("enemy blocks route at level " + level, route.contains(generated.enemy()));
+            assertTrue("fruit on route at level " + level, route.contains(generated.fruit()));
+            int[][] fromPlayer = finder.distancesFrom(map, generated.player());
+            int[][] fromEnemy = finder.distancesFrom(map, generated.enemy());
+            int playerToFruit = fromPlayer[generated.fruit().row()][generated.fruit().column()];
+            int enemyToFruit = fromEnemy[generated.fruit().row()][generated.fruit().column()];
+            assertTrue("fruit safety at level " + level,
+                    enemyToFruit >= playerToFruit + Math.max(4, (route.size() - 1) / 10));
+        }
+    }
+
+    private static void generationIsDeterministic() {
+        ProceduralLevelFactory factory = new ProceduralLevelFactory();
+        for (int level : new int[]{1, 7, 37, 100, 375, 750}) {
+            LevelDifficulty difficulty = LevelDifficulty.calculateDifficulty(level, 750);
+            GeneratedLevel first = factory.generate(level, difficulty);
+            GeneratedLevel second = factory.generate(level, difficulty);
+            assertTrue("same layout", Arrays.equals(first.layout(), second.layout()));
+            assertTrue("same enemy", first.enemy().equals(second.enemy()));
+            assertTrue("same exit", first.exit().equals(second.exit()));
+            assertTrue("same fruit", first.fruit().equals(second.fruit()));
+        }
     }
 
     private static void assertPosition(
